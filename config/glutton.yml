@@ -23,7 +23,7 @@ dailyUpdateTime: 03:00
 # a value of 1 means only perfect matches get through
 # a value of 0 means the top result will always pass the match validation
 # if not specified, the default is 0.7
-# matchingThreshold: 0
+matchingThreshold: 0
 
 # define the search infrastructure to be used, possible values are "elasticSearch" or "solr"
 searchEngine: elasticSearch

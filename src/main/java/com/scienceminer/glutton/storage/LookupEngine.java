@@ -172,52 +172,52 @@ public class LookupEngine {
                         GrobidResponse response = grobidClient.processCitation(biblio, "0");
 
                         // TBD: extract more metadata from Grobid result to improve the pairwise ranking
-                        String firstAuthor1 = null;
-                        if (!isBlank(firstAuthor))
-                            firstAuthor1 = firstAuthor;
-                        else
-                            firstAuthor1 = isNotBlank(response.getFirstAuthor()) ? response.getFirstAuthor() : response.getFirstAuthorMonograph();
+                        final String firstAuthor1 = !isBlank(firstAuthor) ? firstAuthor : (isNotBlank(response.getFirstAuthor()) ? response.getFirstAuthor() : response.getFirstAuthorMonograph());
+                        final String atitle1 = !isBlank(atitle) ? atitle : response.getAtitle();                        
+                        final String year1 = !isBlank(year) ? year : response.getYear();
+                        final String jtitle1 = !isBlank(jtitle) ? jtitle : response.getJtitle();
 
-                        String atitle1 = null;
-                        if (!isBlank(atitle))
-                            atitle1 = atitle;
-                        else
-                            atitle1 = response.getAtitle();
-                        
-                        String year1 = null;
-                        if (!isBlank(year))
-                            year1 = year;
-                        else
-                            year1 = response.getYear();
+                        LOGGER.info(jtitle1);
+                        LOGGER.info(year1);
 
-                        String jtitle1 = null;
-                        if (!isBlank(year))
-                            jtitle1 = jtitle;
-                        else
-                            jtitle1 = response.getJtitle();
+                        //Attempt one last desperate matchmake
+                        metadataMatching.retrieveAuthorlessByExactTitleAndYearAsync(jtitle1, year1, newMatchingDocuments -> {
+                            List<MatchingDocument> finalDocuments;
+                            LOGGER.info("got out");
+                            if (newMatchingDocuments == null || newMatchingDocuments.size() == 0)
+                                finalDocuments = matchingDocuments;
+                            else
+                                finalDocuments = newMatchingDocuments;
 
-//System.out.println(biblio + " -> " + firstAuthor1 + " | " + atitle1 + " | " + year1 + " | " + jtitle1);
-                        List<MatchingDocument> rankedMatchingDocuments = pairwiseRanking(atitle1, firstAuthor1, jtitle1, 
-                                    null, year1, null, null, null, null, matchingDocuments);
+    //System.out.println(biblio + " -> " + firstAuthor1 + " | " + atitle1 + " | " + year1 + " | " + jtitle1);
+                            List<MatchingDocument> rankedMatchingDocuments = pairwiseRanking(atitle1, firstAuthor1, jtitle1, 
+                                        null, year1, null, null, null, null, finalDocuments);
 
-                        final MatchingDocument localResultDocument = rankedMatchingDocuments.get(0);
+                            LOGGER.info("pairwiseranked");
 
-                        //no title and author, extract with grobid. if grobid unavailable... it will fail.
-                        if (!isBlank(firstAuthor1)) {
-                            if (!areMetadataMatching(localResultDocument)) {
-                                callback.accept(new MatchingDocument(new NotFoundException("Best bibliographical record did not passed the post-validation")));
+                            final MatchingDocument localResultDocument = rankedMatchingDocuments.get(0);
+
+                            //no title and author, extract with grobid. if grobid unavailable... it will fail.
+                            if (!isBlank(firstAuthor1)) {
+                                if (!areMetadataMatching(localResultDocument)) {
+                                    callback.accept(new MatchingDocument(new NotFoundException("Best bibliographical record did not pass the post-validation")));
+                                    return;
+                                }
+                                 
+                                final String s = injectIdsByDoi(localResultDocument.getJsonObject(), localResultDocument.getDOI());
+                                localResultDocument.setFinalJsonObject(s);
+                                callback.accept(localResultDocument);
+
                                 return;
                             }
-                             
-                            final String s = injectIdsByDoi(localResultDocument.getJsonObject(), localResultDocument.getDOI());
-                            localResultDocument.setFinalJsonObject(s);
-                            callback.accept(localResultDocument);
+
+                            callback.accept(new MatchingDocument(new NotFoundException("No acrobatics saved us")));
                             return;
-                        }
+                        });
                         
                     } catch (Exception e) {
                         //LOGGER.error("grobid place failure", e);
-                        LOGGER.warn("GROBID not available, no extra metadata available for pairwise ranking");
+                        LOGGER.warn("GROBID not available, no extra metadata available for pairwise ranking", e);
                     }
                 }
 

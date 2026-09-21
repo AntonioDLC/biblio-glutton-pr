@@ -232,6 +232,23 @@ public class MetadataMatching {
     /**
      * Search by raw bibliographical reference string
      */
+    public void retrieveAuthorlessByExactTitleAndYearAsync(String atitle, String year, Consumer<List<MatchingDocument>> callback) {
+        BoolQueryBuilder queryBuilder = QueryBuilders.boolQuery()
+            //.must(QueryBuilders.existsQuery(INDEX_FIELD_NAME_YEAR));
+
+            .must(QueryBuilders.matchPhraseQuery(INDEX_FIELD_NAME_ATITLE, atitle))
+            .must(QueryBuilders.termQuery(INDEX_FIELD_NAME_YEAR, year));
+            //.mustNot(QueryBuilders.existsQuery(INDEX_FIELD_NAME_FIRST_AUTHOR));
+
+        LOGGER.info("I get here at least");
+
+        executeQueryAsync(queryBuilder, callback);
+    }
+
+
+    /**
+     * Search by raw bibliographical reference string
+     */
     public List<MatchingDocument> retrieveByBiblio(String biblio) {
         if (isBlank(biblio)) {
             throw new ServiceException(400, "Supplied bibliographical string is empty.");
@@ -287,7 +304,9 @@ public class MetadataMatching {
         SearchRequest request = prepareQueryExecution(query);
         final List<MatchingDocument> matchingDocuments;
         try {
+            LOGGER.info("I get here too");
             final SearchResponse searchResponse = esClient.searchSync(request, RequestOptions.DEFAULT);
+            LOGGER.info("And here??");
 
             matchingDocuments = processResponse(searchResponse);
 

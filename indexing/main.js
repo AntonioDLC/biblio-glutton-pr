@@ -746,4 +746,5 @@ function main() {
     processAction(options);
 }
 
-main();
+console.log("WE CRAAAZEEEE");
+//main();
